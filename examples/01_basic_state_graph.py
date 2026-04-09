@@ -54,6 +54,13 @@ def build_graph():
 
 if __name__ == "__main__":
     app = build_graph()
+
+    # 生成Mermaid图
+    png_data = app.get_graph().draw_mermaid_png()
+    with open("1-graph.png", "wb") as f:
+        f.write(png_data)
+    print("已生成流程图: 1-graph.png")
+
     result = app.invoke({"topic": "LangGraph"})
 
     print("运行结果:")

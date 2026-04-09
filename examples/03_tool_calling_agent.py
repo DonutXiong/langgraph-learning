@@ -48,14 +48,28 @@ class AgentState(TypedDict):
 
 def load_model():
     load_dotenv()
-    model_name = os.getenv("LANGCHAIN_MODEL", "openai:gpt-4.1-mini")
+    model_name = os.getenv("LANGCHAIN_MODEL", "openai:deepseek-chat")
 
+    # 检查必要的 API Key
     if model_name.startswith("openai:") and not os.getenv("OPENAI_API_KEY"):
-        raise RuntimeError("检测到 OpenAI 模型，但未配置 OPENAI_API_KEY。")
+        raise RuntimeError("检测到 OpenAI 兼容模型，但未配置 OPENAI_API_KEY。")
     if model_name.startswith("anthropic:") and not os.getenv("ANTHROPIC_API_KEY"):
         raise RuntimeError("检测到 Anthropic 模型，但未配置 ANTHROPIC_API_KEY。")
 
-    model = init_chat_model(model=model_name, temperature=0)
+    # 获取基础 URL（对于 DeepSeek 等第三方 OpenAI 兼容服务）
+    base_url = os.getenv("OPENAI_BASE_URL")
+
+    # 构建模型配置
+    model_config = {
+        "model": model_name,
+        "temperature": 0
+    }
+
+    # 如果提供了基础 URL，添加到配置中
+    if base_url:
+        model_config["base_url"] = base_url
+
+    model = init_chat_model(**model_config)
     return model.bind_tools(TOOLS)
 
 
@@ -120,6 +134,13 @@ def parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     args = parse_args()
     app = build_graph()
+
+    # 生成Mermaid图
+    png_data = app.get_graph().draw_mermaid_png()
+    with open("3-graph.png", "wb") as f:
+        f.write(png_data)
+    print("已生成流程图: 3-graph.png")
+
     try:
         result = app.invoke(
             {
@@ -129,7 +150,11 @@ if __name__ == "__main__":
         )
     except RuntimeError as exc:
         print(f"运行失败: {exc}")
-        print("请先复制 .env.example 为 .env，并配置对应模型提供商的 API Key。")
+        print("请先配置 .env 文件中的 API Key。")
+        print("对于 DeepSeek:")
+        print("1. 获取 DeepSeek API Key: https://platform.deepseek.com/api_keys")
+        print("2. 在 .env 文件中设置 OPENAI_API_KEY=你的API密钥")
+        print("3. 确保 OPENAI_BASE_URL=https://api.deepseek.com")
         raise SystemExit(1) from exc
 
     print(f"LLM 调用次数: {result['llm_calls']}")

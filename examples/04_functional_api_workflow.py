@@ -42,6 +42,12 @@ def build_study_card(topic: str) -> dict:
 
 
 if __name__ == "__main__":
+    # 生成Mermaid图
+    png_data = build_study_card.get_graph().draw_mermaid_png()
+    with open("4-graph.png", "wb") as f:
+        f.write(png_data)
+    print("已生成流程图: 4-graph.png")
+
     result = build_study_card.invoke("LangGraph")
 
     print("运行结果:")

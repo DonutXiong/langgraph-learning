@@ -5,6 +5,7 @@ from pprint import pprint
 from typing import Annotated, Literal, TypedDict
 
 from langgraph.graph import END, START, StateGraph
+from IPython.display import Image,display
 
 
 class QuizState(TypedDict):
@@ -18,7 +19,7 @@ def take_quiz(state: QuizState) -> dict:
     attempt = state.get("attempts", 0) + 1
 
     # 用固定分数模拟“第一次学不会，复习后提高”的流程。
-    score = 55 if attempt == 1 else 88
+    score = 55 if attempt == 1 else 55 + 4 * attempt
 
     return {
         "attempts": attempt,
@@ -55,6 +56,12 @@ def build_graph():
 
 if __name__ == "__main__":
     app = build_graph()
+
+    # 生成Mermaid图
+    png_data = app.get_graph().draw_mermaid_png()
+    with open("2-graph.png", "wb") as f:
+        f.write(png_data)
+    print("已生成流程图: 2-graph.png")
     result = app.invoke({"topic": "LangGraph", "attempts": 0, "score": 0, "history": []})
 
     print("运行结果:")

@@ -11,6 +11,7 @@ class StreamState(TypedDict):
     """流式处理状态"""
     input_text: str
     processed_chunks: Annotated[list[str], operator.add]
+    current_chunk_index: int  # 当前正在处理的块索引
     progress: int  # 处理进度 0-100
     status: str
 
@@ -22,6 +23,7 @@ def split_into_chunks(state: StreamState) -> dict:
 
     return {
         "processed_chunks": ["开始处理..."] + chunks,
+        "current_chunk_index": 0,  # 从第一个块开始处理
         "progress": 10,
         "status": "分割完成"
     }
@@ -29,39 +31,40 @@ def split_into_chunks(state: StreamState) -> dict:
 
 def process_chunk(state: StreamState) -> dict:
     """处理单个文本块（模拟耗时操作）"""
-    if not state["processed_chunks"]:
-        return {"status": "等待数据..."}
-
-    # 获取最后一个块进行处理
     chunks = state["processed_chunks"]
-    if len(chunks) <= 1:  # 第一个是"开始处理..."
+    current_index = state.get("current_chunk_index", 0)
+
+    # 检查是否有块需要处理（跳过第一个"开始处理..."消息）
+    if len(chunks) <= 1 or current_index >= len(chunks) - 1:
         return {"status": "无数据可处理"}
 
-    last_chunk = chunks[-1]
+    # 获取当前要处理的块（跳过第一个"开始处理..."消息）
+    chunk_to_process = chunks[current_index + 1]  # +1 跳过"开始处理..."
 
     # 模拟处理时间
     time.sleep(0.1)
 
-    processed = f"已处理: '{last_chunk}'"
+    processed = f"已处理: '{chunk_to_process}'"
 
     # 计算进度
     total_chunks = len(state["input_text"]) // 10 + 1
-    current_chunk = len([c for c in chunks if c.startswith("已处理:")])
-    progress = min(100, 10 + (current_chunk * 80 // total_chunks))
+    progress = min(100, 10 + ((current_index + 1) * 80 // total_chunks))
 
     return {
         "processed_chunks": [processed],
+        "current_chunk_index": current_index + 1,  # 移动到下一个块
         "progress": progress,
-        "status": f"处理中... ({current_chunk}/{total_chunks})"
+        "status": f"处理中... ({current_index + 1}/{total_chunks})"
     }
 
 
 def analyze_results(state: StreamState) -> dict:
     """分析处理结果"""
-    processed = [c for c in state["processed_chunks"] if c.startswith("已处理:")]
+    current_index = state.get("current_chunk_index", 0)
+    total_chunks = len(state["input_text"]) // 10 + 1
 
     return {
-        "processed_chunks": [f"分析完成: 共处理了 {len(processed)} 个块"],
+        "processed_chunks": [f"分析完成: 共处理了 {current_index} 个块 (总共 {total_chunks} 个块)"],
         "progress": 100,
         "status": "分析完成"
     }
@@ -69,13 +72,12 @@ def analyze_results(state: StreamState) -> dict:
 
 def should_continue_processing(state: StreamState) -> str:
     """决定是否继续处理"""
-    chunks = state["processed_chunks"]
-    processed_count = len([c for c in chunks if c.startswith("已处理:")])
+    current_index = state.get("current_chunk_index", 0)
 
     # 计算总块数
     total_chunks = len(state["input_text"]) // 10 + 1
 
-    if processed_count >= total_chunks:
+    if current_index >= total_chunks:
         return "analyze_results"
     return "process_chunk"
 
@@ -320,7 +322,7 @@ if __name__ == "__main__":
     print("=" * 60)
 
     print("\n实际应用场景:")
-    print("• 实时聊天机器人响应")
-    print("• 长文档处理进度显示")
-    print("• 批量任务处理状态更新")
-    print("• 用户界面实时反馈")
+    print("- 实时聊天机器人响应")
+    print("- 长文档处理进度显示")
+    print("- 批量任务处理状态更新")
+    print("- 用户界面实时反馈")
